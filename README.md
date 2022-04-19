@@ -7,7 +7,7 @@
 Run the docker image, exposing port 5001
 
 ```
-docker run -p 5001:5001 princeamd/weasyprint
+docker run -p 5001:5001 princeamd/weasyprint:latest
 ```
 
 A `POST` to port `/pdf` on port 5001 with an html body with give a response containing a PDF. The filename may be set using a query parameter, e.g.:
