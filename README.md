@@ -1,6 +1,6 @@
 # docker-weasyprint
 
-[![Build Status](https://travis-ci.org/aquavitae/docker-weasyprint.svg?branch=master)](https://travis-ci.org/aquavitae/docker-weasyprint)
+[![Build Status](https://travis-ci.org/princeamd/docker-weasyprint.svg?branch=master)](https://travis-ci.org/princeamd/docker-weasyprint)
 
 [Weasyprint](http://weasyprint.org/) as a microservice in a docker image.
 
@@ -9,7 +9,7 @@
 Run the docker image, exposing port 5001
 
 ```
-docker run -p 5001:5001 aquavitae/weasyprint
+docker run -p 5001:5001 princeamd/weasyprint
 ```
 
 A `POST` to port `/pdf` on port 5001 with an html body with give a response containing a PDF. The filename may be set using a query parameter, e.g.:
