@@ -4,9 +4,13 @@ import json
 import os
 import logging
 from functools import wraps
+import urllib.request
 
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
+
+font_config = FontConfiguration()
 
 app = Flask('pdf')
 
@@ -70,14 +74,19 @@ def home():
 def generate():
     name = request.args.get('filename', 'unnamed.pdf')
     app.logger.info('POST  /pdf?filename=%s' % name)
+    app.logger.info('Content-Type %s' % request.headers['Content-Type'])
+
     if request.headers['Content-Type'] == 'application/json':
         data = json.loads(request.data.decode('utf-8'))
-        html = HTML(string=data['html'])
-        css = [CSS(string=sheet) for sheet in data['css']]
-        pdf = html.write_pdf(stylesheets=css)
+        html = HTML(string=urllib.request.urlopen(data['html']).read().decode('utf-8'))
+        cssFile = urllib.request.urlopen(data['css'])
+        #app.logger.info('CSS FILE %s' % cssFile.read().decode('utf-8'))
+
+        css = CSS(string=cssFile.read().decode('utf-8'), font_config=font_config)
+        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
     else:
         html = HTML(string=request.data.decode('utf-8'))
-        pdf = html.write_pdf()
+        pdf = html.write_pdf(font_config=font_config)
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
