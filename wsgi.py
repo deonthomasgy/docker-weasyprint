@@ -62,7 +62,7 @@ def home():
             <p>The following endpoints are available:</p>
             <ul>
                 <li>POST to <code>/pdf?filename=myfile.pdf</code>. The body should
-                    contain html or a JSON list of html strings and css strings: { "html": base64_encoded(html), "css": url-to-css-file }</li>
+                    contain html or a JSON list of html strings and css strings: { "html": base64_encoded(html), "css": base64_encoded(css) }</li>
                 <li>POST to <code>/multiple?filename=myfile.pdf</code>. The body
                     should contain a JSON list of html strings. They will each
                     be rendered and combined into a single pdf</li>
@@ -81,12 +81,14 @@ def generate():
         data = json.loads(request.data.decode('utf-8'))
         #html = HTML(string=urllib.request.urlopen(data['html']).read().decode('utf-8'))
         #app.logger.info('HTML File %s' % base64.b64decode(data['html']));
-        html = HTML(string=base64.b64decode(data['html']))
 
-        cssFile = urllib.request.urlopen(data['css'])
+        html = HTML(string=base64.b64decode(data['html']))
+        css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
+
+        #cssFile = urllib.request.urlopen(data['css'])
         #app.logger.info('CSS FILE %s' % cssFile.read().decode('utf-8'))
 
-        css = CSS(string=cssFile.read().decode('utf-8'), font_config=font_config)
+        #css = CSS(string=cssFile.read().decode('utf-8'), font_config=font_config)
         pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
     else:
         html = HTML(string=request.data.decode('utf-8'))
