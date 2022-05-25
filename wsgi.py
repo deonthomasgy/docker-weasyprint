@@ -116,19 +116,12 @@ def zip():
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
         filenames = json.loads(data['filenames'])
 
-        for index in range(len(filenames)):
-            app.logger.info('Filename %s' % filenames[index])
-            html = HTML(string=base64.b64decode(htmls[index]))
-            html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
-
         with zipfile.ZipFile(fileobj, mode="w") as archive:
-            for filename in filenames:
-                archive.write(filename)
-
-        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
-    else:
-        html = HTML(string=request.data.decode('utf-8'))
-        pdf = html.write_pdf(font_config=font_config)
+            for index in range(len(filenames)):
+                app.logger.info('Filename %s' % filenames[index])
+                html = HTML(string=base64.b64decode(htmls[index]))
+                html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
+                archive.write(filenames[index])
 
     response = make_response(fileobj.getvalue())
     response.headers['Content-Type'] = 'application/zip'
