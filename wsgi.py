@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import json
-import os
+import os, io, zipfile
 import logging
 from functools import wraps
 import urllib.request
@@ -63,6 +63,8 @@ def home():
             <ul>
                 <li>POST to <code>/pdf?filename=myfile.pdf</code>. The body should
                     contain html or a JSON list of html strings and css strings: { "html": base64_encoded(html), "css": base64_encoded(css) }</li>
+                <li>POST to <code>/zip?filename=myfile.pdf</code>. The body should
+                    contain html or a JSON list of html strings and css strings: { "html": base64_encoded(html), "css": base64_encoded(css) }</li>
                 <li>POST to <code>/multiple?filename=myfile.pdf</code>. The body
                     should contain a JSON list of html strings. They will each
                     be rendered and combined into a single pdf</li>
@@ -99,6 +101,40 @@ def generate():
     app.logger.info(' ==> POST  /pdf?filename=%s  ok' % name)
     return response
 
+@app.route('/zip', methods=['POST'])
+@authenticate
+def zip():
+    name = request.args.get('filename', 'unnamed.zip')
+    app.logger.info('POST  /zip?filename=%s' % name)
+    app.logger.info('Content-Type %s' % request.headers['Content-Type'])
+    fileobj = io.BytesIO()
+
+    if request.headers['Content-Type'] == 'application/json':
+        data = json.loads(request.data.decode('utf-8'))
+
+        htmls = json.loads(data['htmls'])
+        css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
+        filenames = json.loads(data['filenames'])
+
+        for index in range(len(filenames)):
+            app.logger.info('Filename %s' % filenames[index])
+            html = HTML(string=base64.b64decode(htmls[index]))
+            html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
+
+        with zipfile.ZipFile(fileobj, mode="w") as archive:
+            for filename in filenames:
+                archive.write(filename)
+
+        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
+    else:
+        html = HTML(string=request.data.decode('utf-8'))
+        pdf = html.write_pdf(font_config=font_config)
+
+    response = make_response(fileobj.getvalue())
+    response.headers['Content-Type'] = 'application/zip'
+    response.headers['Content-Disposition'] = 'inline;filename=%s' % name
+    app.logger.info(' ==> POST  /zip?filename=%s  ok' % name)
+    return response
 
 @app.route('/multiple', methods=['POST'])
 @authenticate
