@@ -123,6 +123,9 @@ def zip():
                 html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
                 archive.write(filenames[index])
 
+                if os.path.exists(filenames[index]):
+                    os.remove(filenames[index])
+
     response = make_response(fileobj.getvalue())
     response.headers['Content-Type'] = 'application/zip'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
