@@ -81,20 +81,12 @@ def generate():
 
     if request.headers['Content-Type'] == 'application/json':
         data = json.loads(request.data.decode('utf-8'))
-        #html = HTML(string=urllib.request.urlopen(data['html']).read().decode('utf-8'))
-        #app.logger.info('HTML File %s' % base64.b64decode(data['html']));
 
         html = HTML(string=base64.b64decode(data['html']))
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
 
-        #cssFile = urllib.request.urlopen(data['css'])
-        #app.logger.info('CSS FILE %s' % cssFile.read().decode('utf-8'))
-
-        #css = CSS(string=cssFile.read().decode('utf-8'), font_config=font_config)
         pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
-    else:
-        html = HTML(string=request.data.decode('utf-8'))
-        pdf = html.write_pdf(font_config=font_config)
+
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
