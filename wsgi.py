@@ -160,7 +160,7 @@ def zip():
         htmls = json.loads(data['htmls'])
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
         filenames = json.loads(data['filenames'])
-        password = data.get('password')
+        passwords = json.loads(data.get('passwords', '[]'))
 
         with zipfile.ZipFile(fileobj, mode="w") as archive:
             for index in range(len(filenames)):
@@ -168,11 +168,11 @@ def zip():
                 html = HTML(string=base64.b64decode(htmls[index]))
                 html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
 
-                if password:
+                if passwords and index < len(passwords) and passwords[index]:
                     reader = PdfReader(filenames[index])
                     writer = PdfWriter()
                     writer.clone_document_from_reader(reader)
-                    writer.encrypt(password)
+                    writer.encrypt(passwords[index])
                     with open(filenames[index], 'wb') as f:
                         writer.write(f)
 
