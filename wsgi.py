@@ -86,7 +86,7 @@ def generate():
         html = HTML(string=base64.b64decode(data['html']))
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
 
-        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
+        pdf = html.write_pdf(stylesheets=[css], font_config=font_config, encryption={'user_password': '0000'})
 
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
@@ -110,7 +110,7 @@ def xlsx():
             f.write(base64.b64decode(data['xlsx']))
 
         # convert xlsx to pdf
-        subprocess.call(['unoconv', '-f', 'pdf', 'input.xlsx'])
+        subprocess.call(['unoconv', '-f', 'pdf', '--export=EncryptFile=true', '--export=DocumentOpenPassword=0000', 'input.xlsx'])
 
         # read pdf file from disk
         with open('input.pdf', 'rb') as f:
@@ -147,7 +147,7 @@ def zip():
             for index in range(len(filenames)):
                 app.logger.info('Filename %s' % filenames[index])
                 html = HTML(string=base64.b64decode(htmls[index]))
-                html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
+                html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config, encryption={'user_password': '0000'})
                 archive.write(filenames[index])
 
                 if os.path.exists(filenames[index]):
@@ -166,7 +166,7 @@ def multiple():
     app.logger.info('POST  /multiple?filename=%s' % name)
     htmls = json.loads(request.data.decode('utf-8'))
     documents = [HTML(string=html).render() for html in htmls]
-    pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
+    pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf(encryption={'user_password': '0000'})
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
