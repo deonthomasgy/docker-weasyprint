@@ -6,6 +6,7 @@ import logging
 from functools import wraps
 import urllib.request
 import base64
+import subprocess
 
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
@@ -91,6 +92,40 @@ def generate():
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
     app.logger.info(' ==> POST  /pdf?filename=%s  ok' % name)
+    return response
+
+# create route to accept input as xlsx file and use unoconv to convert to pdf
+@app.route('/xlsx', methods=['POST'])
+@authenticate
+def xlsx():
+    name = request.args.get('filename', 'unnamed.pdf')
+    app.logger.info('POST  /xlsx?filename=%s' % name)
+    app.logger.info('Content-Type %s' % request.headers['Content-Type'])
+
+    if request.headers['Content-Type'] == 'application/json':
+        data = json.loads(request.data.decode('utf-8'))
+
+        # write xlsx file to disk
+        with open('input.xlsx', 'wb') as f:
+            f.write(base64.b64decode(data['xlsx']))
+
+        # convert xlsx to pdf
+        subprocess.call(['unoconv', '-f', 'pdf', 'input.xlsx'])
+
+        # read pdf file from disk
+        with open('input.pdf', 'rb') as f:
+            pdf = f.read()
+
+        # remove xlsx and pdf files from disk
+        if os.path.exists('input.xlsx'):
+            os.remove('input.xlsx')
+        if os.path.exists('input.pdf'):
+            os.remove('input.pdf')
+
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'inline;filename=%s' % name
+    app.logger.info(' ==> POST  /xlsx?filename=%s  ok' % name)
     return response
 
 @app.route('/zip', methods=['POST'])
