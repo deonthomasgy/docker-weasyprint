@@ -1,4 +1,4 @@
-FROM python:3.10-bullseye
+FROM python:3.12-bookworm
 
 # install all the dependencies except libcairo2 from jessie
 RUN apt-get -y update \
@@ -11,6 +11,8 @@ RUN apt-get -y update \
         python3-lxml \
         shared-mime-info \
         libcairo2 \
+        unoconv \
+        libreoffice \
     && apt-get -y clean
 
 WORKDIR /usr/src/app
