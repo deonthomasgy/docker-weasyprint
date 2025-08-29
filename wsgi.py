@@ -8,6 +8,7 @@ import urllib.request
 import base64
 import subprocess
 
+from pypdf import PdfReader, PdfWriter
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
@@ -86,7 +87,16 @@ def generate():
         html = HTML(string=base64.b64decode(data['html']))
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
 
-        pdf = html.write_pdf(stylesheets=[css], font_config=font_config, encryption={'user_password': '0000'})
+        unencrypted_pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
+
+        reader = PdfReader(io.BytesIO(unencrypted_pdf))
+        writer = PdfWriter()
+        writer.clone_document_from_reader(reader)
+        writer.encrypt('0000')
+
+        with io.BytesIO() as f:
+            writer.write(f)
+            pdf = f.getvalue()
 
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
@@ -147,7 +157,15 @@ def zip():
             for index in range(len(filenames)):
                 app.logger.info('Filename %s' % filenames[index])
                 html = HTML(string=base64.b64decode(htmls[index]))
-                html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config, encryption={'user_password': '0000'})
+                html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
+
+                reader = PdfReader(filenames[index])
+                writer = PdfWriter()
+                writer.clone_document_from_reader(reader)
+                writer.encrypt('0000')
+                with open(filenames[index], 'wb') as f:
+                    writer.write(f)
+
                 archive.write(filenames[index])
 
                 if os.path.exists(filenames[index]):
@@ -166,7 +184,16 @@ def multiple():
     app.logger.info('POST  /multiple?filename=%s' % name)
     htmls = json.loads(request.data.decode('utf-8'))
     documents = [HTML(string=html).render() for html in htmls]
-    pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf(encryption={'user_password': '0000'})
+    unencrypted_pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
+
+    reader = PdfReader(io.BytesIO(unencrypted_pdf))
+    writer = PdfWriter()
+    writer.clone_document_from_reader(reader)
+    writer.encrypt('0000')
+
+    with io.BytesIO() as f:
+        writer.write(f)
+        pdf = f.getvalue()
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
