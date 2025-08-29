@@ -86,17 +86,19 @@ def generate():
 
         html = HTML(string=base64.b64decode(data['html']))
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
+        password = data.get('password')
 
-        unencrypted_pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
+        pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
 
-        reader = PdfReader(io.BytesIO(unencrypted_pdf))
-        writer = PdfWriter()
-        writer.clone_document_from_reader(reader)
-        writer.encrypt('0000')
+        if password:
+            reader = PdfReader(io.BytesIO(pdf))
+            writer = PdfWriter()
+            writer.clone_document_from_reader(reader)
+            writer.encrypt(password)
 
-        with io.BytesIO() as f:
-            writer.write(f)
-            pdf = f.getvalue()
+            with io.BytesIO() as f:
+                writer.write(f)
+                pdf = f.getvalue()
 
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
@@ -119,8 +121,14 @@ def xlsx():
         with open('input.xlsx', 'wb') as f:
             f.write(base64.b64decode(data['xlsx']))
 
+        password = data.get('password')
+
         # convert xlsx to pdf
-        subprocess.call(['unoconv', '-f', 'pdf', '--export=EncryptFile=true', '--export=DocumentOpenPassword=0000', 'input.xlsx'])
+        command = ['unoconv', '-f', 'pdf']
+        if password:
+            command.extend(['--export=EncryptFile=true', '--export=DocumentOpenPassword=' + password])
+        command.append('input.xlsx')
+        subprocess.call(command)
 
         # read pdf file from disk
         with open('input.pdf', 'rb') as f:
@@ -152,6 +160,7 @@ def zip():
         htmls = json.loads(data['htmls'])
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
         filenames = json.loads(data['filenames'])
+        password = data.get('password')
 
         with zipfile.ZipFile(fileobj, mode="w") as archive:
             for index in range(len(filenames)):
@@ -159,12 +168,13 @@ def zip():
                 html = HTML(string=base64.b64decode(htmls[index]))
                 html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
 
-                reader = PdfReader(filenames[index])
-                writer = PdfWriter()
-                writer.clone_document_from_reader(reader)
-                writer.encrypt('0000')
-                with open(filenames[index], 'wb') as f:
-                    writer.write(f)
+                if password:
+                    reader = PdfReader(filenames[index])
+                    writer = PdfWriter()
+                    writer.clone_document_from_reader(reader)
+                    writer.encrypt(password)
+                    with open(filenames[index], 'wb') as f:
+                        writer.write(f)
 
                 archive.write(filenames[index])
 
@@ -182,18 +192,21 @@ def zip():
 def multiple():
     name = request.args.get('filename', 'unnamed.pdf')
     app.logger.info('POST  /multiple?filename=%s' % name)
-    htmls = json.loads(request.data.decode('utf-8'))
+    data = json.loads(request.data.decode('utf-8'))
+    htmls = data['htmls']
+    password = data.get('password')
     documents = [HTML(string=html).render() for html in htmls]
-    unencrypted_pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
+    pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
 
-    reader = PdfReader(io.BytesIO(unencrypted_pdf))
-    writer = PdfWriter()
-    writer.clone_document_from_reader(reader)
-    writer.encrypt('0000')
+    if password:
+        reader = PdfReader(io.BytesIO(pdf))
+        writer = PdfWriter()
+        writer.clone_document_from_reader(reader)
+        writer.encrypt(password)
 
-    with io.BytesIO() as f:
-        writer.write(f)
-        pdf = f.getvalue()
+        with io.BytesIO() as f:
+            writer.write(f)
+            pdf = f.getvalue()
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = 'inline;filename=%s' % name
