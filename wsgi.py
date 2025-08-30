@@ -8,7 +8,7 @@ import urllib.request
 import base64
 import subprocess
 
-from PyPDF2 import PdfFileReader, PdfFileWriter
+from PyPDF2 import PdfReader, PdfWriter
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
@@ -92,9 +92,10 @@ def generate():
         pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
 
         if user_password:
-            reader = PdfFileReader(io.BytesIO(pdf))
-            writer = PdfFileWriter()
-            writer.appendPagesFromReader(reader)
+            reader = PdfReader(io.BytesIO(pdf))
+            writer = PdfWriter()
+            for page in reader.pages:
+                writer.add_page(page)
             writer.encrypt(user_password, owner_pwd=owner_password)
 
             with io.BytesIO() as f:
@@ -171,9 +172,10 @@ def zip():
                 html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
 
                 if user_passwords and index < len(user_passwords) and user_passwords[index]:
-                    reader = PdfFileReader(filenames[index])
-                    writer = PdfFileWriter()
-                    writer.appendPagesFromReader(reader)
+                    reader = PdfReader(filenames[index])
+                    writer = PdfWriter()
+                    for page in reader.pages:
+                        writer.add_page(page)
 
                     owner_password = owner_passwords[index] if owner_passwords and index < len(owner_passwords) else None
                     writer.encrypt(user_passwords[index], owner_pwd=owner_password)
@@ -204,9 +206,10 @@ def multiple():
     pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
 
     if user_password:
-        reader = PdfFileReader(io.BytesIO(pdf))
-        writer = PdfFileWriter()
-        writer.appendPagesFromReader(reader)
+        reader = PdfReader(io.BytesIO(pdf))
+        writer = PdfWriter()
+        for page in reader.pages:
+            writer.add_page(page)
         writer.encrypt(user_password, owner_pwd=owner_password)
 
         with io.BytesIO() as f:
