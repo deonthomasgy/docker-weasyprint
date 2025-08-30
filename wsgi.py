@@ -8,7 +8,7 @@ import urllib.request
 import base64
 import subprocess
 
-from pypdf import PdfReader, PdfWriter
+from PyPDF2 import PdfFileReader, PdfFileWriter
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
@@ -86,15 +86,16 @@ def generate():
 
         html = HTML(string=base64.b64decode(data['html']))
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
-        password = data.get('password')
+        user_password = data.get('user_password')
+        owner_password = data.get('owner_password')
 
         pdf = html.write_pdf(stylesheets=[css], font_config=font_config)
 
-        if password:
-            reader = PdfReader(io.BytesIO(pdf))
-            writer = PdfWriter()
-            writer.clone_document_from_reader(reader)
-            writer.encrypt(password)
+        if user_password:
+            reader = PdfFileReader(io.BytesIO(pdf))
+            writer = PdfFileWriter()
+            writer.appendPagesFromReader(reader)
+            writer.encrypt(user_password, owner_pwd=owner_password)
 
             with io.BytesIO() as f:
                 writer.write(f)
@@ -121,12 +122,12 @@ def xlsx():
         with open('input.xlsx', 'wb') as f:
             f.write(base64.b64decode(data['xlsx']))
 
-        password = data.get('password')
+        user_password = data.get('user_password')
 
         # convert xlsx to pdf
         command = ['unoconv', '-f', 'pdf']
-        if password:
-            command.extend(['--export=EncryptFile=true', '--export=DocumentOpenPassword=' + password])
+        if user_password:
+            command.extend(['--export=EncryptFile=true', '--export=DocumentOpenPassword=' + user_password])
         command.append('input.xlsx')
         subprocess.call(command)
 
@@ -160,7 +161,8 @@ def zip():
         htmls = json.loads(data['htmls'])
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
         filenames = json.loads(data['filenames'])
-        passwords = json.loads(data.get('passwords', '[]'))
+        user_passwords = json.loads(data.get('user_passwords', '[]'))
+        owner_passwords = json.loads(data.get('owner_passwords', '[]'))
 
         with zipfile.ZipFile(fileobj, mode="w") as archive:
             for index in range(len(filenames)):
@@ -168,11 +170,13 @@ def zip():
                 html = HTML(string=base64.b64decode(htmls[index]))
                 html.write_pdf(filenames[index], stylesheets=[css], font_config=font_config)
 
-                if passwords and index < len(passwords) and passwords[index]:
-                    reader = PdfReader(filenames[index])
-                    writer = PdfWriter()
-                    writer.clone_document_from_reader(reader)
-                    writer.encrypt(passwords[index])
+                if user_passwords and index < len(user_passwords) and user_passwords[index]:
+                    reader = PdfFileReader(filenames[index])
+                    writer = PdfFileWriter()
+                    writer.appendPagesFromReader(reader)
+
+                    owner_password = owner_passwords[index] if owner_passwords and index < len(owner_passwords) else None
+                    writer.encrypt(user_passwords[index], owner_pwd=owner_password)
                     with open(filenames[index], 'wb') as f:
                         writer.write(f)
 
@@ -194,15 +198,16 @@ def multiple():
     app.logger.info('POST  /multiple?filename=%s' % name)
     data = json.loads(request.data.decode('utf-8'))
     htmls = data['htmls']
-    password = data.get('password')
+    user_password = data.get('user_password')
+    owner_password = data.get('owner_password')
     documents = [HTML(string=html).render() for html in htmls]
     pdf = documents[0].copy([page for doc in documents for page in doc.pages]).write_pdf()
 
-    if password:
-        reader = PdfReader(io.BytesIO(pdf))
-        writer = PdfWriter()
-        writer.clone_document_from_reader(reader)
-        writer.encrypt(password)
+    if user_password:
+        reader = PdfFileReader(io.BytesIO(pdf))
+        writer = PdfFileWriter()
+        writer.appendPagesFromReader(reader)
+        writer.encrypt(user_password, owner_pwd=owner_password)
 
         with io.BytesIO() as f:
             writer.write(f)
