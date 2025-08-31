@@ -2,4 +2,4 @@ gunicorn==22.0.0
 WeasyPrint==66
 flask==2.1.1
 Werkzeug==2.2.2
-PyPDF2==3.0.0
+pypdf==6.0.0

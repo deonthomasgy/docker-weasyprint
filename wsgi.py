@@ -8,7 +8,7 @@ import urllib.request
 import base64
 import subprocess
 
-from PyPDF2 import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter
 from flask import Flask, request, make_response, abort
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
@@ -96,7 +96,7 @@ def generate():
             writer = PdfWriter()
             for page in reader.pages:
                 writer.add_page(page)
-            writer.encrypt(user_password, owner_pwd=owner_password)
+            writer.encrypt(user_password, owner_password=owner_password)
 
             with io.BytesIO() as f:
                 writer.write(f)
@@ -178,7 +178,7 @@ def zip():
                         writer.add_page(page)
 
                     owner_password = owner_passwords[index] if owner_passwords and index < len(owner_passwords) else None
-                    writer.encrypt(user_passwords[index], owner_pwd=owner_password)
+                    writer.encrypt(user_passwords[index], owner_password=owner_password)
                     with open(filenames[index], 'wb') as f:
                         writer.write(f)
 
@@ -210,7 +210,7 @@ def multiple():
         writer = PdfWriter()
         for page in reader.pages:
             writer.add_page(page)
-        writer.encrypt(user_password, owner_pwd=owner_password)
+        writer.encrypt(user_password, owner_password=owner_password)
 
         with io.BytesIO() as f:
             writer.write(f)
