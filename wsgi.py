@@ -163,7 +163,7 @@ def zip():
         css = CSS(string=base64.b64decode(data['css']), font_config=font_config)
         filenames = json.loads(data['filenames'])
         user_passwords = json.loads(data.get('user_passwords', '[]'))
-        owner_passwords = json.loads(data.get('owner_passwords', '[]'))
+        owner_password = data.get('owner_password', '')
 
         with zipfile.ZipFile(fileobj, mode="w") as archive:
             for index in range(len(filenames)):
@@ -177,7 +177,6 @@ def zip():
                     for page in reader.pages:
                         writer.add_page(page)
 
-                    owner_password = owner_passwords[index] if owner_passwords and index < len(owner_passwords) else None
                     writer.encrypt(user_passwords[index], owner_password=owner_password)
                     with open(filenames[index], 'wb') as f:
                         writer.write(f)
