@@ -50,9 +50,12 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# No --max-requests: bulk payslip /zip must never hit a mid-batch worker recycle.
-# Hosts restart these containers on a nightly cron to bound sticky Cairo RSS.
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "wsgi:app"]
+# Multiple sync workers = true parallel PDF renders (WeasyPrint is CPU-bound;
+# threads/async do not help). No --max-requests so bulk /zip is never interrupted.
+# Hosts restart these containers nightly to bound sticky Cairo RSS.
+# Override at runtime: docker run -e WEB_CONCURRENCY=2 ...
+ENV WEB_CONCURRENCY=4
+CMD gunicorn --bind 0.0.0.0:5001 --worker-class sync --workers ${WEB_CONCURRENCY} wsgi:app
 
 
 FROM xlsx-base AS xlsx
@@ -68,6 +71,8 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# No --max-requests: bulk payslip /zip must never hit a mid-batch worker recycle.
-# Hosts restart these containers on a nightly cron to bound sticky Cairo RSS.
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "wsgi:app"]
+# Multiple sync workers = true parallel PDF renders (WeasyPrint is CPU-bound;
+# threads/async do not help). No --max-requests so bulk /zip is never interrupted.
+# Hosts restart these containers nightly to bound sticky Cairo RSS.
+ENV WEB_CONCURRENCY=4
+CMD gunicorn --bind 0.0.0.0:5001 --worker-class sync --workers ${WEB_CONCURRENCY} wsgi:app
