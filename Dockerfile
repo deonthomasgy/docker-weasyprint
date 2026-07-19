@@ -50,11 +50,10 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# Multiple sync workers = true parallel PDF renders (WeasyPrint is CPU-bound;
-# threads/async do not help). No --max-requests so bulk /zip is never interrupted.
+# Single sync worker keeps idle RSS low (~55MiB). Parallelism comes from running
+# multiple containers per host. No --max-requests so bulk /zip is never interrupted.
 # Hosts restart these containers nightly to bound sticky Cairo RSS.
-# Override at runtime: docker run -e WEB_CONCURRENCY=2 ...
-ENV WEB_CONCURRENCY=4
+ENV WEB_CONCURRENCY=1
 CMD gunicorn --bind 0.0.0.0:5001 --worker-class sync --workers ${WEB_CONCURRENCY} wsgi:app
 
 
@@ -71,8 +70,8 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# Multiple sync workers = true parallel PDF renders (WeasyPrint is CPU-bound;
-# threads/async do not help). No --max-requests so bulk /zip is never interrupted.
+# Single sync worker keeps idle RSS low (~55MiB). Parallelism comes from running
+# multiple containers per host. No --max-requests so bulk /zip is never interrupted.
 # Hosts restart these containers nightly to bound sticky Cairo RSS.
-ENV WEB_CONCURRENCY=4
+ENV WEB_CONCURRENCY=1
 CMD gunicorn --bind 0.0.0.0:5001 --worker-class sync --workers ${WEB_CONCURRENCY} wsgi:app
