@@ -50,10 +50,9 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# Recycle workers so WeasyPrint/Cairo RSS does not stick at peak forever.
-# Keep max-requests high enough that a 1000-payslip bulk (/zip chunks) is unlikely
-# to recycle mid-batch on a single container.
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--max-requests", "200", "--max-requests-jitter", "25", "wsgi:app"]
+# No --max-requests: bulk payslip /zip must never hit a mid-batch worker recycle.
+# Hosts restart these containers on a nightly cron to bound sticky Cairo RSS.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "wsgi:app"]
 
 
 FROM xlsx-base AS xlsx
@@ -69,5 +68,6 @@ COPY wsgi.py ./
 
 EXPOSE 5001
 
-# Recycle workers so WeasyPrint/Cairo RSS does not stick at peak forever.
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--max-requests", "200", "--max-requests-jitter", "25", "wsgi:app"]
+# No --max-requests: bulk payslip /zip must never hit a mid-batch worker recycle.
+# Hosts restart these containers on a nightly cron to bound sticky Cairo RSS.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "wsgi:app"]
