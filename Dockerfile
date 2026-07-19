@@ -1,28 +1,71 @@
-FROM python:3.12-bookworm
+FROM python:3.12-slim-bookworm AS builder
 
-# install all the dependencies except libcairo2 from jessie
-RUN apt-get -y update \
-    && apt-get install -y \
-        fonts-font-awesome \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
         libffi-dev \
-        libgdk-pixbuf2.0-0 \
-        libpango1.0-0 \
-        python3-dev \
-        python3-lxml \
-        shared-mime-info \
+        libxml2-dev \
+        libxslt1-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+
+FROM python:3.12-slim-bookworm AS weasyprint-base
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        fonts-font-awesome \
         libcairo2 \
+        libgdk-pixbuf-2.0-0 \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libpangoft2-1.0-0 \
+        shared-mime-info \
+    && rm -rf /var/lib/apt/lists/*
+
+
+FROM weasyprint-base AS xlsx-base
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libreoffice-calc-nogui \
         unoconv \
-        libreoffice \
-    && apt-get -y clean
+    && rm -rf /var/lib/apt/lists/*
+
+
+FROM weasyprint-base AS pdf
 
 WORKDIR /usr/src/app
 
 COPY requirements.txt ./
-
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+    && rm -rf /wheels
 
 COPY wsgi.py ./
 
 EXPOSE 5001
 
-CMD gunicorn --bind 0.0.0.0:5001 wsgi:app
+# Recycle workers so WeasyPrint/Cairo RSS does not stick at peak forever.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--max-requests", "50", "--max-requests-jitter", "10", "wsgi:app"]
+
+
+FROM xlsx-base AS xlsx
+
+WORKDIR /usr/src/app
+
+COPY requirements.txt ./
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
+    && rm -rf /wheels
+
+COPY wsgi.py ./
+
+EXPOSE 5001
+
+# Recycle workers so WeasyPrint/Cairo RSS does not stick at peak forever.
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--max-requests", "50", "--max-requests-jitter", "10", "wsgi:app"]

@@ -3,6 +3,10 @@
 import json
 import os, io, zipfile
 import logging
+import gc
+import glob
+import shutil
+import tempfile
 from functools import wraps
 import urllib.request
 import base64
@@ -16,6 +20,14 @@ from weasyprint.text.fonts import FontConfiguration
 font_config = FontConfiguration()
 
 app = Flask('pdf')
+
+
+def cleanup_weasyprint_temps():
+    """Remove leftover WeasyPrint temp dirs under /tmp (they accumulate across requests)."""
+    tmp = tempfile.gettempdir()
+    for path in glob.glob(os.path.join(tmp, 'weasyprint-*')):
+        shutil.rmtree(path, ignore_errors=True)
+    gc.collect()
 
 
 def authenticate(f):
@@ -39,6 +51,15 @@ def auth():
 @app.route('/health')
 def index():
     return 'ok'
+
+
+@app.after_request
+def after_request(response):
+    # Drop WeasyPrint temp dirs and encourage allocator release between requests.
+    # Sticky RSS is primarily mitigated by gunicorn --max-requests in the Dockerfile.
+    if request.path in ('/pdf', '/zip', '/multiple', '/xlsx'):
+        cleanup_weasyprint_temps()
+    return response
 
 
 @app.before_first_request

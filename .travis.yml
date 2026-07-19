@@ -8,7 +8,7 @@ services:
   - docker
 
 install:
-  - docker build -t weasyprint .
+  - docker build --target pdf -t weasyprint .
   - docker run -d -p 5001:5001 --name weasyprint weasyprint
 
 script:
